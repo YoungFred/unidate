@@ -118,13 +118,23 @@ function renderNav(route) {
     html += link("#/swipe", "nav_swipe") + link("#/home", "nav_supper") + link("#/matches", "nav_matches") + link("#/profile", "nav_profile");
     if (state.profile?.is_admin) html += link("#/admin", "nav_admin");
   } else {
-    html += `<a href="#/login" class="btn small orange" style="color:#fff">${t("nav_login")}</a>`;
+    const sections = route === "#/"
+      ? `<button data-section="how-it-works">${t("how_title")}</button><button data-section="supper-invite">${t("nav_supper")}</button><button data-section="common-questions">${t("faq_title")}</button>`
+      : `<a href="#/">${t("auth_back")}</a>`;
+    html = `<div class="nav-sections">${sections}</div><div class="nav-actions"><button class="lang" id="langBtn">${state.lang === "en" ? "中文" : "EN"}</button><a href="#/login" class="nav-login"${route === "#/login" ? ' aria-current="page"' : ""}>${t("nav_login")}</a><a href="#/signup" class="btn orange nav-join"${route === "#/signup" ? ' aria-current="page"' : ""}>${t("nav_join")}</a></div>`;
   }
-  html += `<button class="lang" id="langBtn">${state.lang === "en" ? "中文" : "EN"}</button>`;
+  if (state.session) html += `<button class="lang" id="langBtn">${state.lang === "en" ? "中文" : "EN"}</button>`;
   nav.innerHTML = html;
   nav.classList.toggle("tabs", !!state.session);
+  nav.classList.toggle("public-nav", !state.session);
+  document.body.classList.toggle("is-public", !state.session);
   document.body.classList.toggle("has-tabs", !!state.session);
   document.getElementById("langBtn").onclick = () => setLang(state.lang === "en" ? "zh" : "en");
+  nav.querySelectorAll("[data-section]").forEach((button) => {
+    button.addEventListener("click", () => document.getElementById(button.dataset.section)?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }));
+  });
+  document.title = t("page_title");
+  document.querySelector(".footer").innerHTML = `<a class="footer-brand" href="#/">UniDate</a><div class="footer-links"><a href="https://www.instagram.com/unidate.co" target="_blank" rel="noopener">Instagram</a><a href="/terms.html">${t("footer_terms")}</a><a href="#/privacy">${t("pv_link")}</a></div><p>${t("footer_note")}</p>`;
 }
 
 // ---------- router ----------
@@ -134,13 +144,16 @@ async function render() {
   const hash = location.hash || "#/";
   const [, page, arg] = hash.split("/");
   const route = "#/" + (page || "");
+  document.documentElement.lang = state.lang === "zh" ? "zh-Hant" : "en";
+  document.body.classList.toggle("is-landing", !page);
+  document.body.classList.toggle("is-auth", page === "login" || page === "signup");
   renderNav(route);
 
   const needAuth = ["swipe", "home", "supper", "matches", "profile", "admin", "onboarding"].includes(page);
   const ready = state.profile?.onboarded && state.profile?.photo_path;
   if (needAuth && !state.session) return go("#/login");
   if (state.session && page !== "onboarding" && needAuth && !ready) return go("#/onboarding");
-  if ((page === "" || page === undefined || page === "login") && state.session) return go(ready ? "#/swipe" : "#/onboarding");
+  if ((!page || page === "login" || page === "signup") && state.session) return go(ready ? "#/swipe" : "#/onboarding");
 
   window.scrollTo(0, 0);
   if (page === "privacy") return renderPrivacy();
@@ -148,6 +161,7 @@ async function render() {
   try {
     switch (page) {
       case "login": return renderLogin();
+      case "signup": return renderLogin(true);
       case "onboarding": return renderOnboarding(state.profile?.onboarded && !state.profile?.photo_path ? 1 : 0);
       case "swipe": return await renderSwipe();
       case "home": return await renderHome();
@@ -189,53 +203,107 @@ function renderConsent() {
 
 // ---------- landing ----------
 function renderLanding() {
-  const steps = [1, 2, 3, 4, 5].map((i) => `
-    <div class="step"><div class="num">${i}</div><div><h3>${t(`s${i}_t`)}</h3><p>${t(`s${i}_d`)}</p></div></div>`).join("");
-  const why = [1, 2, 3, 4].map((i) => `<div class="card"><h3>${t(`w${i}_t`)}</h3><p class="muted">${t(`w${i}_d`)}</p></div>`).join("");
-  const faq = [1, 2, 3, 4].map((i) => `<details><summary>${t(`f${i}_q`)}</summary><p>${t(`f${i}_a`)}</p></details>`).join("");
+  const icons = [
+    '<rect x="4" y="6" width="24" height="20" rx="3"/><path d="m5 8 11 8L27 8"/>',
+    '<path d="M16 27 5.6 16.8C-2 9.2 9 0 16 9c7-9 18 .2 10.4 7.8Z"/>',
+    '<path d="M27 15a11 11 0 0 1-11 11H6l-3 3V15A12 12 0 0 1 27 15Z"/><path d="M10 15h.01M16 15h.01M22 15h.01"/>',
+  ];
+  const steps = [1, 2, 3].map((i) => `<article class="start-step"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[i - 1]}</svg><h3>${t(`start${i}_title`)}</h3><p>${t(`start${i}_body`)}</p></article>`).join("");
+  const faq = [1, 2, 3, 4].map((i) => `<article class="faq-item"><h3>${t(`f${i}_q`)}</h3><p>${t(`f${i}_a`)}</p></article>`).join("");
   $app.innerHTML = `
-    <div class="hero">
-      <span class="pill lav small">${t("hero_kicker")}</span>
-      <h1 style="margin-top:16px">${t("hero_title_a")} <span class="strike">${t("hero_title_strike")}</span><br/>${t("hero_title_b")}</h1>
-      <p class="zh">${t("hero_sub")}</p>
-      <div class="row" style="margin-top:22px">
-        <a class="btn orange" href="#/login">${t("hero_cta")} →</a>
+    <section class="landing-hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">${t("hero_kicker")}</p>
+        <h1 id="hero-title">${t("winter_title")}<br><em>${t("winter_title_end")}</em></h1>
+        <p class="hero-description">${t("winter_sub")}</p>
+        <a class="btn hero-join" href="#/signup">${t("hero_cta")}</a>
       </div>
-      <p class="small muted" style="margin-top:10px">${t("hero_note")}</p>
+      <div class="product-stage" aria-label="${t("demo_label")}">
+        <figure class="hero-photo">
+          <img src="/images/winter-date.jpg" alt="${t("winter_photo_alt")}" width="1024" height="1536" fetchpriority="high">
+          <figcaption>${t("photo_illustration")}</figcaption>
+        </figure>
+        <article class="preview-invite">
+          <p class="preview-label">${t("nav_supper")}</p>
+          <div class="preview-bowl" aria-hidden="true"><svg viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 38h50c-2 18-12 27-25 27S17 56 15 38ZM11 38h58M29 68h22M31 28c-10-9 9-10 0-19M43 28c-10-9 9-10 0-19M55 28c-10-9 9-10 0-19"/></svg></div>
+          <h2>${t("demo_supper_title")}</h2>
+          <p>${t("demo_supper_body")}</p>
+          <div class="preview-seats" aria-hidden="true">${Array.from({length: 6}, () => '<span></span>').join("")}</div>
+        </article>
+        <article class="preview-match">
+          <p class="preview-label">${t("demo_label")}</p>
+          <div class="preview-campuses" aria-hidden="true"><span>${state.lang === "zh" ? "清大" : "NTHU"}</span><svg viewBox="0 0 36 36" fill="currentColor"><path d="M18 30 5 17C-3 8 10-1 18 9 26-1 39 8 31 17Z"/></svg><span>${state.lang === "zh" ? "交大" : "NYCU"}</span></div>
+          <div class="preview-result" aria-live="polite"><h2 id="demo-title">${t("demo_like_title")}</h2><p id="demo-body">${t("demo_like_body")}</p></div>
+          <button type="button" id="demo-like" aria-pressed="false">${t("demo_try")}</button>
+        </article>
+      </div>
+    </section>
+    <div class="trust-line" aria-label="${t("trust_label")}">
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6Z"/><path d="m8 12 3 3 5-6"/></svg>${t("trust_school")}</span>
+      <span>${t("trust_mutual")}</span><span>${t("trust_private")}</span>
     </div>
-    <div class="road" aria-hidden="true">
-      <div class="side"><span>🐼</span>NTHU</div>
-      <div class="street"><b>${t("road_label")}</b></div>
-      <div class="side"><span>🦊</span>NYCU</div>
-    </div>
-    <section><h2>${t("how_title")}</h2><div class="steps">${steps}</div></section>
-    <section><h2>${t("why_title")}</h2><div class="grid">${why}</div></section>
-    <section class="faq"><h2>${t("faq_title")}</h2>${faq}</section>
-    <section class="card green center">
-      <h2 style="color:#fff">${t("hero_title_b")}</h2>
-      <a class="btn" style="background:var(--cream);color:var(--ink)" href="#/login">${t("hero_cta")}</a>
+    <section class="join-layout" id="join" aria-labelledby="signup-title">
+      <div class="join-intro"><p class="eyebrow">NTHU × NYCU</p><h2>${t("signup_kicker")}</h2><p>${t("auth_body")}</p></div>
+      <div class="landing-signup">
+        <h2 id="signup-title">${t("signup_headline")}</h2>
+        <p class="signup-sub">${t("signup_sub")}</p>
+        ${authForm(true)}
+      </div>
+    </section>
+    <section class="landing-how" id="how-it-works" aria-labelledby="how-title">
+      <div class="section-intro"><h2 id="how-title">${t("start_title")}</h2></div>
+      <div class="start-steps">${steps}</div>
+    </section>
+    <section class="supper-invite" id="supper-invite">
+      <div class="supper-symbol" aria-hidden="true"><svg viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 38h50c-2 18-12 27-25 27S17 56 15 38ZM11 38h58M29 68h22M31 28c-10-9 9-10 0-19M43 28c-10-9 9-10 0-19M55 28c-10-9 9-10 0-19"/></svg></div>
+      <div><p class="eyebrow">${t("supper_kicker")}</p><h2>${t("supper_invite_title")}</h2><p>${t("supper_invite_body")}</p></div>
+      <a class="text-link" href="#/signup">${t("supper_invite_cta")}</a>
+    </section>
+    <section class="landing-faq" id="common-questions"><div><h2>${t("faq_title")}</h2><p class="muted">${t("faq_intro")}</p></div><div class="faq">${faq}</div></section>
+    <section class="last-invite center">
+      <p class="eyebrow">NTHU × NYCU</p><h2>${t("closing_title")}</h2><p>${t("closing_body")}</p>
+      <a class="btn" href="#/signup">${t("hero_cta")}</a>
     </section>`;
+  wireAuthForm(true);
+  document.getElementById("demo-like").onclick = (event) => {
+    const button = event.currentTarget;
+    const liked = button.getAttribute("aria-pressed") !== "true";
+    button.setAttribute("aria-pressed", String(liked));
+    button.closest(".preview-match").classList.toggle("is-liked", liked);
+    document.getElementById("demo-title").textContent = t(liked ? "sw_match" : "demo_like_title");
+    document.getElementById("demo-body").textContent = t(liked ? "demo_match_body" : "demo_like_body");
+    button.textContent = t(liked ? "demo_reset" : "demo_try");
+  };
 }
 
 // ---------- login ----------
 function renderLogin(signup = false) {
   $app.innerHTML = `
-    <div class="card" style="max-width:480px;margin:40px auto">
+    <div class="auth-layout">
+    <aside class="auth-intro"><p class="eyebrow">NTHU × NYCU</p><h1>${t("auth_title")}<br><em>${t("auth_title_end")}</em></h1><p>${t("auth_body")}</p><a class="text-link" href="#/">${t("auth_back")}</a></aside>
+    <div class="card auth-card">
       <h2>${signup ? t("login_signup_title") : t("login_title")}</h2>
-      <p class="muted">${t("login_sub")}</p>
-      <form id="f">
+      <p class="muted">${signup ? t("signup_sub") : t("login_sub")}</p>
+      ${authForm(signup)}
+    </div></div>`;
+  wireAuthForm(signup);
+}
+
+function authForm(signup) {
+  return `      <form id="f">
         <label for="email">${t("login_email")}</label>
         <input id="email" type="email" required placeholder="s112xxxxx@gapp.nthu.edu.tw" autocomplete="email" />
-        <label for="pw">${t("login_password")}</label>
+        <label for="pw">${t("login_password")}${signup ? ` <span class="password-hint">(${t("login_pw_hint")})</span>` : ""}</label>
         <input id="pw" type="password" required minlength="8" autocomplete="${signup ? "new-password" : "current-password"}" />
-        ${signup ? `<p class="small muted" style="margin-top:6px">${t("login_pw_hint")}</p>
-        <label class="consent"><input type="checkbox" id="consent" /> <span>${t("cs_label")}</span></label>` : ""}
+        ${signup ? `<label class="consent"><input type="checkbox" id="consent" /> <span>${t("cs_label")}</span></label>` : ""}
         <button class="btn orange" style="margin-top:16px;width:100%" id="send">${signup ? t("login_signup") : t("login_send")}</button>
       </form>
-      <p class="center" style="margin-top:16px"><a href="#" id="swap">${signup ? t("login_to_signin") : t("login_to_signup")}</a></p>
-      ${signup ? "" : `<p class="small muted center">${t("login_forgot")}</p>`}
-    </div>`;
-  document.getElementById("swap").onclick = (e) => { e.preventDefault(); renderLogin(!signup); };
+      <p class="center" style="margin-top:16px"><a href="${signup ? "#/login" : "#/signup"}" id="swap">${signup ? t("login_to_signin") : t("login_to_signup")}</a></p>
+      ${signup ? "" : `<p class="small muted center">${t("login_forgot")}</p>`}`;
+}
+
+function wireAuthForm(signup) {
+  document.getElementById("swap").onclick = (e) => { e.preventDefault(); go(signup ? "#/login" : "#/signup"); };
   document.getElementById("f").onsubmit = async (e) => {
     e.preventDefault();
     const email = document.getElementById("email").value.trim().toLowerCase();
@@ -269,7 +337,7 @@ function renderLogin(signup = false) {
       $app.innerHTML = `<div class="card center" style="max-width:480px;margin:40px auto">
         <p style="font-size:2.4rem;margin:0">✉️</p><h2>${esc(email)}</h2><p>${t("login_check_email")}</p>
         <a class="btn ghost" href="#/login" id="backlogin">${t("login_title")}</a></div>`;
-      document.getElementById("backlogin").onclick = (ev) => { ev.preventDefault(); renderLogin(false); };
+      document.getElementById("backlogin").onclick = (ev) => { ev.preventDefault(); go("#/login"); };
       return;
     }
     await loadMe();

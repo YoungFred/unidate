@@ -1,0 +1,12 @@
+UniDate winter campaign image
+Generated with the built-in image_gen tool. Fictional people, illustrative scene.
+Project asset: public/images/winter-date.jpg
+
+Final prompt:
+Use case: photorealistic-natural. Asset type: one portrait-oriented editorial campaign photograph for UniDate, a university dating website in Taiwan. Two fictional East Asian adults age 22 to 25, one man and one woman, sharing a casual late-night meal at a small open-front Taiwanese noodle shop in Hsinchu in winter. Candid side-on medium shot: they are seated opposite each other, leaning into a conversation and laughing naturally with affectionate eye contact, wearing simple cream and dark brown sweaters and light jackets. Small bowls of noodles and tea on a modest table, soft steam. Warm tungsten light from the shop against softly blurred cool blue evening street background, understated film grain and natural skin texture, 35mm analog editorial photography, romantic yet grounded and spontaneous. Attractive believable people, not fashion models posing. Portrait composition with both faces clearly visible in central area and some breathing room above, genuine everyday Taiwan street-side setting, premium minimal lifestyle campaign. No snow, no Christmas decorations, no logos, no readable writing, no text overlay, no UI, no watermark. Output a portrait image.
+
+Visual reference:
+Two Good Co. by Nightjar, featured on Awwwards.
+https://www.awwwards.com/sites/two-good
+https://nightjar.co/work/two-good-co
+Adapted principles: spacious composition, large type, simple navigation, prominent editorial photography. Original UniDate layout, copy, and imagery.
