@@ -837,10 +837,21 @@ async function renderProfile() {
 async function renderAdmin() {
   if (!state.profile.is_admin) return go("#/home");
   $app.innerHTML = `<div class="loading">…</div>`;
-  const [{ data: nights }, { data: reports }] = await Promise.all([
+  const [{ data: nights }, { data: reports }, { data: accounts, error: accErr }] = await Promise.all([
     sb.from("supper_nights").select("*").order("starts_at", { ascending: false }).limit(20),
     sb.from("reports").select("*").order("created_at", { ascending: false }).limit(50),
+    sb.rpc("admin_accounts"),
   ]);
+  const accs = accounts || [];
+  const weekAgo = Date.now() - 7 * 864e5;
+  const accStats = [
+    ["Accounts", accs.length],
+    ["Email confirmed", accs.filter((a) => a.email_confirmed).length],
+    ["Profile done", accs.filter((a) => a.onboarded).length],
+    ["NTHU / NYCU", `${accs.filter((a) => a.school === "NTHU").length} / ${accs.filter((a) => a.school === "NYCU").length}`],
+    ["Logged in this week", accs.filter((a) => a.last_sign_in_at && new Date(a.last_sign_in_at) > weekAgo).length],
+  ];
+  const yes = (v) => (v ? "✓" : `<span class="muted">—</span>`);
   const counts = {};
   if (nights?.length) {
     const { data: bks } = await sb.from("bookings").select("night_id,status").in("night_id", nights.map((n) => n.id));
@@ -852,6 +863,14 @@ async function renderAdmin() {
 
   $app.innerHTML = `
     <h1 style="font-size:2.2rem">Admin</h1>
+    <div class="card" id="accounts">
+      <h3>Accounts</h3>
+      ${accErr ? `<p class="muted">Couldn't load accounts: ${esc(accErr.message)}</p>` : `
+      <div class="acc-stats">${accStats.map(([k, v]) => `<div><b>${v}</b><span class="small muted">${k}</span></div>`).join("")}</div>
+      <div class="acc-scroll"><table class="admin"><tr><th>Email</th><th>Last login</th><th>School</th><th>Name</th><th>Confirmed</th><th>Profile</th><th>Joined</th></tr>
+      ${accs.map((a) => `<tr><td class="small">${esc(a.email)}${a.is_admin ? ` <span class="tag">admin</span>` : ""}</td><td class="small">${a.last_sign_in_at ? fmtDate(a.last_sign_in_at) : `<span class="muted">never</span>`}</td><td>${a.school ? `<span class="tag ${a.school}">${a.school}</span>` : ""}</td><td>${esc(a.display_name || "")}</td><td>${yes(a.email_confirmed)}</td><td>${yes(a.onboarded)}</td><td class="small">${fmtDate(a.created_at)}</td></tr>`).join("")}
+      </table></div>`}
+    </div>
     <div class="card">
       <h3>New Supper Night</h3>
       <div class="grid">

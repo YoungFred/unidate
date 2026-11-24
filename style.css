@@ -480,3 +480,11 @@ label.consent input { width: 20px; height: 20px; flex: none; margin-top: 1px; ac
 .footer-links a { text-decoration: none; font-size: 1.125rem; }
 .footer-links a:hover { text-decoration: underline; text-underline-offset: 4px; }
 .footer > p { font-size: 1.125rem; line-height: 1.8; margin: 0; }
+
+/* admin: accounts list */
+.acc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 8px 0 14px; }
+.acc-stats > div { background: var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.acc-stats b { font-size: 1.6rem; }
+.acc-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.acc-scroll table.admin { min-width: 640px; }
+.acc-scroll td, .acc-scroll th { white-space: nowrap; }
