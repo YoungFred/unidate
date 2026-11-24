@@ -941,7 +941,7 @@ async function renderAdmin() {
     if (!confirm("Form tables now? This replaces any existing tables for this night.")) return;
     const { data, error } = await sb.rpc("form_groups", { p_night: b.dataset.form, p_size: 6 });
     if (error) return toast(error.message, true);
-    toast(`${data} tables formed`); showGroups(b.dataset.form);
+    toast(`${data} ${data === 1 ? "table" : "tables"} formed`); showGroups(b.dataset.form);
   }));
   $app.querySelectorAll("[data-show]").forEach((b) => (b.onclick = () => showGroups(b.dataset.show)));
 
