@@ -491,8 +491,17 @@ label.consent input { width: 20px; height: 20px; flex: none; margin-top: 1px; ac
 .acc-scroll td, .acc-scroll th { white-space: nowrap; }
 
 /* profile: Instagram / Threads handles */
-.social-grid { grid-template-columns: 1fr 1fr; }
+.social-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
 .handle { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden; }
 .handle span { padding: 0 4px 0 12px; color: var(--muted, #8a7479); white-space: nowrap; font-size: .95em; }
 .handle input { border: 0 !important; margin: 0 !important; box-shadow: none !important; min-width: 0; flex: 1; }
 @media (max-width: 560px) { .social-grid { grid-template-columns: 1fr; } }
+
+/* matches: contact notes */
+.let-know { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.let-know .row { gap: 6px; margin-top: 6px; }
+.note-chip { font: inherit; font-size: .9em; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+.note-chip.on { background: #e8f6ec; border-color: #9fd3ad; color: #1d5b2d; }
+.note-in { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: #fdf0f3; line-height: 1.4; }
+.note-in.new { background: #ffe3ea; box-shadow: inset 0 0 0 1px #ffb3c4; }
+.badge { display: inline-block; min-width: 18px; padding: 1px 6px; border-radius: 999px; background: #e0335a; color: #fff; font-size: .75em; font-weight: 700; line-height: 1.5; text-align: center; vertical-align: middle; }

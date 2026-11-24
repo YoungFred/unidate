@@ -11,7 +11,7 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
 });
 
 // ---------- state ----------
-const state = { session: null, profile: null, quiz: null, lang: loadLang() };
+const state = { session: null, profile: null, quiz: null, lang: loadLang(), unseen: 0 };
 
 function loadLang() {
   let saved = null;
@@ -106,6 +106,8 @@ async function loadMe() {
     sb.from("quiz_answers").select("*").eq("user_id", session.user.id).maybeSingle(),
   ]);
   state.profile = p; state.quiz = q;
+  const { data: notes } = await sb.from("match_notes").select("from_user,seen_at").eq("to_user", session.user.id);
+  state.unseen = (notes || []).filter((n) => !n.seen_at).length;
   if (p?.lang && !localStorage.getItem("ud_lang")) state.lang = p.lang;
 }
 
@@ -115,7 +117,7 @@ function renderNav(route) {
   const link = (h, k) => `<a href="${h}" class="${route === h ? "active" : ""}">${t(k)}</a>`;
   let html = "";
   if (state.session) {
-    html += link("#/swipe", "nav_swipe") + link("#/home", "nav_supper") + link("#/matches", "nav_matches") + link("#/profile", "nav_profile");
+    html += link("#/swipe", "nav_swipe") + link("#/home", "nav_supper") + link("#/matches", "nav_matches").replace("</a>", state.unseen ? ` <span class="badge">${state.unseen}</span></a>` : "</a>") + link("#/profile", "nav_profile");
     if (state.profile?.is_admin) html += link("#/admin", "nav_admin");
   } else {
     const sections = route === "#/"
@@ -376,6 +378,8 @@ function profileFormHtml(p) {
     <div class="grid social-grid">
       <div class="handle"><span>Instagram @</span><input id="instagram" maxlength="60" autocomplete="off" autocapitalize="none" placeholder="yourname" value="${esc(p.instagram || "")}" /></div>
       <div class="handle"><span>Threads @</span><input id="threads" maxlength="60" autocomplete="off" autocapitalize="none" placeholder="yourname" value="${esc(p.threads || "")}" /></div>
+      <div class="handle"><span>LINE ID</span><input id="line_id" maxlength="60" autocomplete="off" autocapitalize="none" placeholder="your.line.id" value="${esc(p.line_id || "")}" /></div>
+      <div class="handle"><span>WhatsApp +</span><input id="whatsapp" maxlength="24" inputmode="tel" autocomplete="off" placeholder="886 912 345 678" value="${esc(p.whatsapp || "")}" /></div>
     </div>
     <label>${t("ob_year")}</label>
     <select id="year">${["", "1", "2", "3", "4", "5+", "Master", "PhD"].map((y) => `<option ${p.year === y ? "selected" : ""} value="${y}">${yearLabel(y) || "—"}</option>`).join("")}</select>
@@ -388,6 +392,31 @@ function cleanHandle(v) {
   h = h.replace(/^https?:\/\//i, "").replace(/^(www\.)?(instagram\.com|threads\.net|threads\.com)\//i, "").replace(/^@/, "").split(/[/?#]/)[0].replace(/^@/, "");
   return /^[A-Za-z0-9._]{1,30}$/.test(h) ? h : false;
 }
+// LINE ID: 4–20 lowercase letters, numbers, . - _ (a pasted line.me/ti/p/~id link works too)
+function cleanLine(v) {
+  let h = (v || "").trim().toLowerCase();
+  if (!h) return null;
+  h = h.replace(/^https?:\/\//, "").replace(/^line\.me\/ti\/p\/~?/, "").replace(/^@/, "").split(/[/?#]/)[0];
+  return /^[a-z0-9._-]{4,20}$/.test(h) ? h : false;
+}
+// WhatsApp: digits with country code. "0912 345 678" (Taiwan mobile) becomes 886912345678; wa.me links work too.
+function cleanPhone(v) {
+  let h = (v || "").trim();
+  if (!h) return null;
+  h = h.replace(/^https?:\/\//i, "").replace(/^(api\.)?(wa\.me|whatsapp\.com)\/(send\?phone=)?/i, "");
+  const plus = h.startsWith("+") || h.startsWith("00");
+  let d = h.replace(/\D/g, "");
+  if (h.startsWith("00")) d = d.slice(2);
+  else if (!plus && /^09\d{8}$/.test(d)) d = "886" + d.slice(1);
+  else if (!plus && d.startsWith("0")) return false; // local number from another country: needs the country code
+  return /^[1-9]\d{7,14}$/.test(d) ? d : false;
+}
+function contactError(vals) {
+  if (vals.instagram === false || vals.threads === false) return t("ob_social_bad");
+  if (vals.line_id === false) return t("ob_line_bad");
+  if (vals.whatsapp === false) return t("ob_wa_bad");
+  return "";
+}
 function readProfileForm(obj) {
   return {
     display_name: document.getElementById("display_name").value.trim(),
@@ -397,6 +426,8 @@ function readProfileForm(obj) {
     gender: obj.gender || null, interested_in: obj.interested_in || null, mode: obj.mode || "both",
     instagram: cleanHandle(document.getElementById("instagram").value),
     threads: cleanHandle(document.getElementById("threads").value),
+    line_id: cleanLine(document.getElementById("line_id").value),
+    whatsapp: cleanPhone(document.getElementById("whatsapp").value),
   };
 }
 
@@ -455,7 +486,7 @@ function renderOnboarding(startStep = 0) {
         e.preventDefault();
         const vals = readProfileForm(choices);
         if (!vals.display_name) return;
-        if (vals.instagram === false || vals.threads === false) return toast(t("ob_social_bad"), true);
+        if (contactError(vals)) return toast(contactError(vals), true);
         const { error } = await sb.from("profiles").update(vals).eq("id", p.id);
         if (error) return toast(error.message, true);
         Object.assign(state.profile, vals);
@@ -784,29 +815,74 @@ async function renderSupper(nightId) {
 }
 
 // ---------- matches ----------
+const CHANNELS = [
+  { id: "instagram", field: "instagram", label: (v) => `Instagram @${v}`, href: (v) => `https://www.instagram.com/${encodeURIComponent(v)}/` },
+  { id: "threads", field: "threads", label: (v) => `Threads @${v}`, href: (v) => `https://www.threads.net/@${encodeURIComponent(v)}` },
+  { id: "line", field: "line_id", label: (v) => `LINE ${v}`, href: (v) => `https://line.me/ti/p/~${encodeURIComponent(v)}` },
+  { id: "whatsapp", field: "whatsapp", label: () => "WhatsApp", href: (v) => `https://wa.me/${encodeURIComponent(v)}` },
+];
+function ago(d) {
+  const m = Math.max(0, Math.round((Date.now() - new Date(d)) / 6e4));
+  const zh = state.lang === "zh";
+  if (m < 1) return zh ? "剛剛" : "just now";
+  if (m < 60) return zh ? `${m} 分鐘前` : `${m}m ago`;
+  const h = Math.round(m / 60); if (h < 24) return zh ? `${h} 小時前` : `${h}h ago`;
+  const dd = Math.round(h / 24); return zh ? `${dd} 天前` : `${dd}d ago`;
+}
+
 async function renderMatches() {
   $app.innerHTML = `<div class="loading">…</div>`;
-  const { data: matches, error } = await sb.rpc("my_matches");
+  const [{ data: matches, error }, { data: notes }] = await Promise.all([
+    sb.rpc("my_matches"),
+    sb.from("match_notes").select("*"),
+  ]);
   if (error) throw error;
   const url = await photoUrls((matches || []).map((m) => m.photo_path));
+  const me = state.profile.id;
+  const sent = new Set((notes || []).filter((n) => n.from_user === me).map((n) => n.to_user + ":" + n.channel));
+  const got = (notes || []).filter((n) => n.to_user === me);
 
-  const mHtml = (matches || []).map((m) => `<div class="card match">
+  const mHtml = (matches || []).map((m) => {
+    const ch = CHANNELS.filter((c) => m[c.field]);
+    const name = esc(m.display_name || "—");
+    const incoming = got.filter((n) => n.from_user === m.user_id).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    const chips = [...ch.map((c) => c.id), "email"].map((id) => {
+      const on = sent.has(m.user_id + ":" + id);
+      return `<button type="button" class="note-chip ${on ? "on" : ""}" data-note="${id}" data-to="${m.user_id}">${on ? "✓ " : ""}${t("n_" + id)}</button>`;
+    }).join("");
+    return `<div class="card match">
       <div class="who-row"><img class="avatar" src="${esc(url(m.photo_path) || FALLBACK_PIC)}" alt="" />
         <div><span class="pill ${m.source === "swipe" ? "" : "gold"} small">${m.source === "swipe" ? t("m_from_swipe") : t("m_from_supper")}</span>
-        <h3 style="margin:8px 0 2px">${esc(m.display_name || "—")}</h3>
+        <h3 style="margin:8px 0 2px">${name}</h3>
         <span class="small muted"><span class="tag ${m.school}">${m.school}</span> ${esc(m.department || "")}</span></div></div>
+      ${incoming.map((n) => `<div class="note-in ${n.seen_at ? "" : "new"}">💌 <b>${name}</b>: “${t("n_" + n.channel)}” <span class="small muted">· ${ago(n.created_at)}</span>${n.seen_at ? "" : ` <span class="badge">${t("m_new")}</span>`}</div>`).join("")}
       <div class="row" style="margin-top:12px">
-        ${m.instagram ? `<a class="btn orange small" target="_blank" rel="noopener" href="https://www.instagram.com/${encodeURIComponent(m.instagram)}/">Instagram @${esc(m.instagram)}</a>` : ""}
-        ${m.threads ? `<a class="btn orange small" target="_blank" rel="noopener" href="https://www.threads.net/@${encodeURIComponent(m.threads)}">Threads @${esc(m.threads)}</a>` : ""}
-        <a class="btn ${m.instagram || m.threads ? "ghost" : "orange"} small" href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Hi from UniDate 🐼🦊")}">${m.instagram || m.threads ? t("m_email") : t("m_say_hi")} ✉️</a>
+        ${ch.map((c) => `<a class="btn orange small" target="_blank" rel="noopener" href="${esc(c.href(m[c.field]))}">${esc(c.label(m[c.field]))}</a>`).join("")}
+        <a class="btn ${ch.length ? "ghost" : "orange"} small" href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Hi from UniDate 🐼🦊")}">${ch.length ? t("m_email") : t("m_say_hi")} ✉️</a>
       </div>
-      ${m.instagram || m.threads ? "" : `<p class="small muted" style="margin:8px 0 0">${t("m_no_social")}</p>`}
-    </div>`).join("");
+      ${ch.length ? "" : `<p class="small muted" style="margin:8px 0 0">${t("m_no_social")}</p>`}
+      <div class="let-know"><span class="small muted">${t("m_let_know").replace("{name}", name)}</span><div class="row">${chips}</div></div>
+    </div>`;
+  }).join("");
 
   $app.innerHTML = `
     <h1 style="font-size:2.2rem">${t("m_title")}</h1>
     <p class="muted">${t("sup_see_again_sub")}</p>
     ${mHtml || `<div class="card center muted">${t("m_none")}</div>`}`;
+
+  $app.querySelectorAll("[data-note]").forEach((b) => (b.onclick = async () => {
+    const key = b.dataset.to + ":" + b.dataset.note;
+    b.disabled = true;
+    const { error } = sent.has(key)
+      ? await sb.from("match_notes").delete().match({ from_user: me, to_user: b.dataset.to, channel: b.dataset.note })
+      : await sb.from("match_notes").insert({ from_user: me, to_user: b.dataset.to, channel: b.dataset.note });
+    b.disabled = false;
+    if (error) return toast(error.message, true);
+    if (sent.has(key)) { sent.delete(key); b.classList.remove("on"); b.textContent = t("n_" + b.dataset.note); toast(t("m_note_undone")); }
+    else { sent.add(key); b.classList.add("on"); b.textContent = "✓ " + t("n_" + b.dataset.note); toast(t("m_note_sent")); }
+  }));
+
+  if (state.unseen) { await sb.rpc("mark_notes_seen"); state.unseen = 0; renderNav("#/matches"); }
 }
 
 // ---------- profile ----------
@@ -834,11 +910,11 @@ async function renderProfile() {
   document.getElementById("pf").onsubmit = async (e) => {
     e.preventDefault();
     const vals = readProfileForm(choices);
-    if (vals.instagram === false || vals.threads === false) return toast(t("ob_social_bad"), true);
+    if (contactError(vals)) return toast(contactError(vals), true);
     const { error } = await sb.from("profiles").update(vals).eq("id", p.id);
     if (error) return toast(error.message, true);
     Object.assign(state.profile, vals); toast(t("saved"));
-    document.getElementById("instagram").value = vals.instagram || ""; document.getElementById("threads").value = vals.threads || "";
+    ["instagram", "threads", "line_id", "whatsapp"].forEach((k) => (document.getElementById(k).value = vals[k] || ""));
   };
   document.getElementById("retake").onclick = () => { location.hash = "#/onboarding"; };
   document.getElementById("logout").onclick = async () => { await sb.auth.signOut(); state.session = null; state.profile = null; go("#/"); };
