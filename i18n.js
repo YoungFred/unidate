@@ -86,13 +86,13 @@ export const STR = {
 
   faq_title: { en: "FAQ", zh: "常見問題" },
   f1_q: { en: "Is this a dating app?", zh: "這是交友軟體嗎？" },
-  f1_a: { en: "It's both. Choose dating, friends, or both — we use that when matching tables and connections.", zh: "想找約會對象或交朋友都可以。選一下你來這裡想認識什麼樣的人，我們會依照你的選擇安排同桌和配對。" },
+  f1_a: { en: "It's both. Choose dating, friends, or both — swiping only shows you people looking for the same thing. Supper Nights are a mixed table of NTHU and NYCU students with a similar budget.", zh: "想找約會對象或交朋友都可以。選一下你來這裡想認識什麼樣的人，滑卡時只會看到想法相同的同學。宵夜局則是清大、交大同學混合同桌，並依預算安排。" },
   f2_q: { en: "Who pays?", zh: "餐費怎麼算？" },
   f2_a: { en: "Everyone pays for their own food at the restaurant. Pick a budget so your table matches.", zh: "到餐廳各付各的就好。報名時選一下預算，我們會盡量把預算差不多的同學安排在同一桌。" },
   f3_q: { en: "Is it safe?", zh: "安全嗎？" },
   f3_a: { en: "Everyone is a verified student, and photos are only visible to signed-in students. Meet in public places. You can block or report anyone, and the UniDate team reviews every report.", zh: "每個帳號都要通過學校信箱驗證，照片也只有登入後的同學看得到。見面請選公共場所；遇到不舒服的狀況，可以封鎖或檢舉，UniDate 團隊會查看每一則檢舉。" },
   f4_q: { en: "What if I don't speak Chinese / English?", zh: "如果我不太會說中文或英文呢？" },
-  f4_a: { en: "Tell us in the quiz — we'll try to seat you with people you can talk to.", zh: "做測驗時選一下你習慣用的語言，我們會盡量安排能一起聊天的同學。" },
+  f4_a: { en: "Tables mix students from both schools, so expect a bit of 中文 and a bit of English. Pick the language you're most comfortable with in the quiz — it shows on your swipe card so others know.", zh: "同桌會有兩校的同學，可能中英文都會聊到。做測驗時選一下你最自在的語言，它會顯示在你的滑卡上，讓別人知道。" },
 
   login_title: { en: "Sign in", zh: "登入" },
   login_sub: { en: "Use your NTHU or NYCU email.", zh: "用清大或交大的學校信箱登入。" },

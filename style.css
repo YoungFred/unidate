@@ -404,7 +404,8 @@ table.admin td, table.admin th { border-bottom: 1px solid var(--line); padding: 
   body.has-tabs .toast { bottom: 152px; }
   body.has-tabs .topbar { backdrop-filter: none; background: rgba(251, 248, 244, .97); }
   .deck { height: min(560px, 64vh); }
-  .swipe-btns { margin-top: 16px; }
+  body.has-tabs .deck { height: clamp(280px, calc(100svh - 400px), 560px); }
+  .swipe-btns { margin-top: 12px; }
 }
 
 /* ---------- photos ---------- */
@@ -456,7 +457,7 @@ table.admin td, table.admin th { border-bottom: 1px solid var(--line); padding: 
   border: 2px dashed var(--line); border-radius: 26px; color: var(--muted); }
 
 /* ---------- match popup ---------- */
-.overlay { position: fixed; inset: 0; z-index: 60; background: rgba(36, 20, 25, .94); color: #fffaf5; display: grid; place-items: center; padding: 16px; }
+.overlay { position: fixed; inset: 0; z-index: 60; background: rgba(36, 20, 25, .985); backdrop-filter: blur(6px); color: #fffaf5; display: grid; place-items: center; padding: 16px; }
 .match-box { text-align: center; max-width: 380px; }
 .match-box h1 {
   font-size: clamp(2.4rem, 9vw, 3.4rem); font-style: italic;

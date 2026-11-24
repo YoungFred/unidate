@@ -492,10 +492,10 @@ function renderOnboarding(startStep = 0) {
 // ---------- swipe ----------
 function vibeChips(answers) {
   if (!answers) return [];
-  return ["energy", "food", "night", "looking"].map((id) => {
+  return ["lang", "energy", "food", "night", "looking"].map((id) => {
     const q = QUIZ.find((x) => x.id === id);
     const a = q && q.a.find((x) => x.v === answers[id]);
-    return a ? tt(a) : null;
+    return a ? (id === "lang" ? "🗣️ " + tt(a) : tt(a)) : null;
   }).filter(Boolean);
 }
 
@@ -593,7 +593,7 @@ function showMatch(d, theirUrl) {
       <p>${t("sw_match_sub")}</p>
       <div class="row" style="justify-content:center;margin-top:16px">
         <a class="btn orange" href="#/matches" id="mGo">${t("m_say_hi")} 💬</a>
-        <button class="btn ghost" id="mKeep" style="color:var(--ink);border-color:var(--ink)">${t("sw_keep")}</button>
+        <button class="btn ghost" id="mKeep" style="color:#fffaf5;border-color:rgba(255,250,245,.7)">${t("sw_keep")}</button>
       </div></div>`;
   document.body.appendChild(ov);
   const close = () => ov.remove();
@@ -859,7 +859,7 @@ async function renderAdmin() {
   }
 
   const local = (d) => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 16); };
-  const nextWed = (() => { const d = new Date(); d.setDate(d.getDate() + ((3 - d.getDay() + 7) % 7 || 7)); d.setHours(21, 0, 0, 0); return d; })();
+  const nextWed = (() => { const d = new Date(); d.setHours(21, 0, 0, 0); do { d.setDate(d.getDate() + 1); } while (d.getDay() !== 3 || d - Date.now() < 72 * 36e5); return d; })();
 
   $app.innerHTML = `
     <h1 style="font-size:2.2rem">Admin</h1>
@@ -897,7 +897,9 @@ async function renderAdmin() {
 
   document.getElementById("create").onclick = async () => {
     const s = new Date(document.getElementById("ns").value);
+    if (isNaN(s)) return toast("Pick a date and time first", true);
     const h = (n) => new Date(s.getTime() + n * 36e5).toISOString();
+    if (new Date(h(-48)) <= new Date()) return toast(`Booking would close ${fmtDate(h(-48))}, which has already passed. Pick a later date.`, true);
     const after = document.getElementById("na").value.trim();
     const { error } = await sb.from("supper_nights").insert({
       starts_at: s.toISOString(), booking_closes_at: h(-48), stats_reveal_at: h(-24), location_reveal_at: h(-9),
