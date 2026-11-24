@@ -200,6 +200,7 @@ export const STR = {
   m_note_sent: { en: "Sent! They'll see it on their Matches page.", zh: "已送出！對方會在配對頁看到。" },
   m_note_undone: { en: "Taken back.", zh: "已收回。" },
   m_new: { en: "New", zh: "新" },
+  team_note: { en: "This is the admin-only team account. It never appears in swiping or at Supper Night tables.", zh: "這是僅供管理用的團隊帳號，不會出現在滑卡或宵夜局同桌名單中。" },
   ob_bio_ph: { en: "e.g. Night-market hunter, bad at volleyball, good at bubble tea", zh: "例如：愛逛夜市、排球打不太好，但很會找好喝的珍奶" },
   sw_title: { en: "Swipe", zh: "滑卡" },
   sw_empty: { en: "You've seen everyone for now. Check back later — or book a Supper Night!", zh: "目前的同學都看過囉。晚點再來滑，或報名宵夜局認識新朋友吧！" },

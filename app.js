@@ -5,6 +5,9 @@ import { STR, QUIZ, ICEBREAKERS, PRIVACY } from "./i18n.js";
 const SUPABASE_URL = "https://uhnxxafhjgkzvcwbgggz.supabase.co";
 const SUPABASE_KEY = "sb_publishable_bXskVfmRkaR6NeIQoUqP1w_mecDOyqi"; // publishable key, safe in the browser
 const SCHOOL_RE = /@([a-z0-9-]+\.)*(nthu|nycu)\.edu\.tw$/i;
+const TEAM_EMAIL = "unidatetw@gmail.com"; // the one admin-only team account (not a student)
+const isTeam = () => state.profile?.school === "TEAM";
+const homeRoute = () => (isTeam() ? "#/admin" : state.profile?.onboarded && state.profile?.photo_path ? "#/swipe" : "#/onboarding");
 
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true },
@@ -116,7 +119,9 @@ function renderNav(route) {
   const nav = document.getElementById("nav");
   const link = (h, k) => `<a href="${h}" class="${route === h ? "active" : ""}">${t(k)}</a>`;
   let html = "";
-  if (state.session) {
+  if (state.session && isTeam()) {
+    html += link("#/admin", "nav_admin") + link("#/profile", "nav_profile");
+  } else if (state.session) {
     html += link("#/swipe", "nav_swipe") + link("#/home", "nav_supper") + link("#/matches", "nav_matches").replace("</a>", state.unseen ? ` <span class="badge">${state.unseen}</span></a>` : "</a>") + link("#/profile", "nav_profile");
     if (state.profile?.is_admin) html += link("#/admin", "nav_admin");
   } else {
@@ -152,10 +157,11 @@ async function render() {
   renderNav(route);
 
   const needAuth = ["swipe", "home", "supper", "matches", "profile", "admin", "onboarding"].includes(page);
-  const ready = state.profile?.onboarded && state.profile?.photo_path;
+  const ready = state.profile?.onboarded && (state.profile?.photo_path || isTeam());
   if (needAuth && !state.session) return go("#/login");
   if (state.session && page !== "onboarding" && needAuth && !ready) return go("#/onboarding");
-  if ((!page || page === "login" || page === "signup") && state.session) return go(ready ? "#/swipe" : "#/onboarding");
+  if ((!page || page === "login" || page === "signup") && state.session) return go(homeRoute());
+  if (state.session && isTeam() && ["swipe", "home", "supper", "matches", "onboarding"].includes(page)) return go("#/admin");
 
   window.scrollTo(0, 0);
   if (page === "privacy") return renderPrivacy();
@@ -310,7 +316,7 @@ function wireAuthForm(signup) {
     e.preventDefault();
     const email = document.getElementById("email").value.trim().toLowerCase();
     const password = document.getElementById("pw").value;
-    if (!SCHOOL_RE.test(email)) return toast(t("login_bad_domain"), true);
+    if (!SCHOOL_RE.test(email) && email !== TEAM_EMAIL) return toast(t("login_bad_domain"), true);
     if (password.length < 8) return toast(t("login_pw_hint"), true);
     if (signup && !document.getElementById("consent").checked) return toast(t("cs_need"), true);
     const btn = document.getElementById("send"); btn.disabled = true;
@@ -343,7 +349,7 @@ function wireAuthForm(signup) {
       return;
     }
     await loadMe();
-    go(state.profile?.onboarded && state.profile?.photo_path ? "#/swipe" : "#/onboarding");
+    go(homeRoute());
   };
 }
 
@@ -887,7 +893,18 @@ async function renderMatches() {
 
 // ---------- profile ----------
 async function renderProfile() {
-  const p = state.profile; const choices = { gender: p.gender, interested_in: p.interested_in, mode: p.mode };
+  const p = state.profile;
+  if (isTeam()) {
+    $app.innerHTML = `<div class="card" style="max-width:560px;margin:0 auto">
+      <h2>UniDate Team</h2>
+      <p class="small muted"><span class="tag TEAM">TEAM</span> ${esc(p.email)}</p>
+      <p class="muted">${t("team_note")}</p>
+      <div class="row" style="margin-top:18px"><a class="btn orange" href="#/admin">${t("nav_admin")} →</a>
+        <button type="button" class="btn ghost" id="logout">${t("nav_logout")}</button></div>
+      <p style="margin-top:18px"><a class="small" href="#/privacy">${t("pv_link")}</a></p></div>`;
+    document.getElementById("logout").onclick = async () => { await sb.auth.signOut(); state.session = null; state.profile = null; go("#/"); };
+    return;
+  } const choices = { gender: p.gender, interested_in: p.interested_in, mode: p.mode };
   const url = p.photo_path ? (await photoUrls([p.photo_path]))(p.photo_path) : "";
   $app.innerHTML = `<div class="card" style="max-width:560px;margin:0 auto">
     <h2>${t("p_title")}</h2>
