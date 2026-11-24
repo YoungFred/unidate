@@ -371,9 +371,22 @@ function profileFormHtml(p) {
     <label>${t("ob_name")}</label><input id="display_name" maxlength="30" required value="${esc(p.display_name || "")}" />
     <label>${t("ob_dept")}</label><input id="department" maxlength="60" placeholder="${esc(t("ob_dept_ph"))}" value="${esc(p.department || "")}" />
     <label>${t("ob_bio")}</label><textarea id="bio" maxlength="160" placeholder="${esc(t("ob_bio_ph"))}">${esc(p.bio || "")}</textarea>
+    <label>${t("ob_social")}</label>
+    <p class="small muted" style="margin:-4px 0 8px">${t("ob_social_sub")}</p>
+    <div class="grid social-grid">
+      <div class="handle"><span>Instagram @</span><input id="instagram" maxlength="60" autocomplete="off" autocapitalize="none" placeholder="yourname" value="${esc(p.instagram || "")}" /></div>
+      <div class="handle"><span>Threads @</span><input id="threads" maxlength="60" autocomplete="off" autocapitalize="none" placeholder="yourname" value="${esc(p.threads || "")}" /></div>
+    </div>
     <label>${t("ob_year")}</label>
     <select id="year">${["", "1", "2", "3", "4", "5+", "Master", "PhD"].map((y) => `<option ${p.year === y ? "selected" : ""} value="${y}">${yearLabel(y) || "—"}</option>`).join("")}</select>
     ${PROFILE_FIELDS.map((f) => `<label>${t(f.key)}</label>${choiceRow(f, p[f.id])}`).join("")}`;
+}
+// Accept "@name", "name", or a pasted instagram.com / threads.net link; return "name", null if blank, or false if invalid
+function cleanHandle(v) {
+  let h = (v || "").trim();
+  if (!h) return null;
+  h = h.replace(/^https?:\/\//i, "").replace(/^(www\.)?(instagram\.com|threads\.net|threads\.com)\//i, "").replace(/^@/, "").split(/[/?#]/)[0].replace(/^@/, "");
+  return /^[A-Za-z0-9._]{1,30}$/.test(h) ? h : false;
 }
 function readProfileForm(obj) {
   return {
@@ -382,6 +395,8 @@ function readProfileForm(obj) {
     bio: document.getElementById("bio").value.trim() || null,
     year: document.getElementById("year").value,
     gender: obj.gender || null, interested_in: obj.interested_in || null, mode: obj.mode || "both",
+    instagram: cleanHandle(document.getElementById("instagram").value),
+    threads: cleanHandle(document.getElementById("threads").value),
   };
 }
 
@@ -440,6 +455,7 @@ function renderOnboarding(startStep = 0) {
         e.preventDefault();
         const vals = readProfileForm(choices);
         if (!vals.display_name) return;
+        if (vals.instagram === false || vals.threads === false) return toast(t("ob_social_bad"), true);
         const { error } = await sb.from("profiles").update(vals).eq("id", p.id);
         if (error) return toast(error.message, true);
         Object.assign(state.profile, vals);
@@ -779,7 +795,12 @@ async function renderMatches() {
         <div><span class="pill ${m.source === "swipe" ? "" : "gold"} small">${m.source === "swipe" ? t("m_from_swipe") : t("m_from_supper")}</span>
         <h3 style="margin:8px 0 2px">${esc(m.display_name || "—")}</h3>
         <span class="small muted"><span class="tag ${m.school}">${m.school}</span> ${esc(m.department || "")}</span></div></div>
-      <a class="btn orange small" href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Hi from UniDate 🐼🦊")}">${t("m_say_hi")} ✉️</a>
+      <div class="row" style="margin-top:12px">
+        ${m.instagram ? `<a class="btn orange small" target="_blank" rel="noopener" href="https://www.instagram.com/${encodeURIComponent(m.instagram)}/">Instagram @${esc(m.instagram)}</a>` : ""}
+        ${m.threads ? `<a class="btn orange small" target="_blank" rel="noopener" href="https://www.threads.net/@${encodeURIComponent(m.threads)}">Threads @${esc(m.threads)}</a>` : ""}
+        <a class="btn ${m.instagram || m.threads ? "ghost" : "orange"} small" href="mailto:${esc(m.email)}?subject=${encodeURIComponent("Hi from UniDate 🐼🦊")}">${m.instagram || m.threads ? t("m_email") : t("m_say_hi")} ✉️</a>
+      </div>
+      ${m.instagram || m.threads ? "" : `<p class="small muted" style="margin:8px 0 0">${t("m_no_social")}</p>`}
     </div>`).join("");
 
   $app.innerHTML = `
@@ -813,9 +834,11 @@ async function renderProfile() {
   document.getElementById("pf").onsubmit = async (e) => {
     e.preventDefault();
     const vals = readProfileForm(choices);
+    if (vals.instagram === false || vals.threads === false) return toast(t("ob_social_bad"), true);
     const { error } = await sb.from("profiles").update(vals).eq("id", p.id);
     if (error) return toast(error.message, true);
     Object.assign(state.profile, vals); toast(t("saved"));
+    document.getElementById("instagram").value = vals.instagram || ""; document.getElementById("threads").value = vals.threads || "";
   };
   document.getElementById("retake").onclick = () => { location.hash = "#/onboarding"; };
   document.getElementById("logout").onclick = async () => { await sb.auth.signOut(); state.session = null; state.profile = null; go("#/"); };

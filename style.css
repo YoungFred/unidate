@@ -489,3 +489,10 @@ label.consent input { width: 20px; height: 20px; flex: none; margin-top: 1px; ac
 .acc-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .acc-scroll table.admin { min-width: 640px; }
 .acc-scroll td, .acc-scroll th { white-space: nowrap; }
+
+/* profile: Instagram / Threads handles */
+.social-grid { grid-template-columns: 1fr 1fr; }
+.handle { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 12px; background: #fff; overflow: hidden; }
+.handle span { padding: 0 4px 0 12px; color: var(--muted, #8a7479); white-space: nowrap; font-size: .95em; }
+.handle input { border: 0 !important; margin: 0 !important; box-shadow: none !important; min-width: 0; flex: 1; }
+@media (max-width: 560px) { .social-grid { grid-template-columns: 1fr; } }
